@@ -212,14 +212,25 @@ class MayaSessionCollector(HookBaseClass):
         :param parent_item: Parent Item instance
         """
 
-        geo_item = parent_item.create_item(
-            "maya.session.geometry", "Geometry", "All Session Geometry"
+        # Consulado framework init
+        self.tk_consuladoutils = self.load_framework(
+            "tk-framework-consuladoutils_v0.x.x"
         )
+        self.maya_utils = self.tk_consuladoutils.import_module("maya_utils")
+        maya_scene = self.maya_utils.MayaScene()
+        for asset in maya_scene:
+            geo_item = parent_item.create_item(
+                "maya.session.geometry",
+                "Geometry",
+                "Alembic cache: {}".format(asset.namespace),
+            )
 
-        # get the icon path to display for this item
-        icon_path = os.path.join(self.disk_location, os.pardir, "icons", "geometry.png")
+            # get the icon path to display for this item
+            icon_path = os.path.join(
+                self.disk_location, os.pardir, "icons", "geometry.png"
+            )
 
-        geo_item.set_icon_from_path(icon_path)
+            geo_item.set_icon_from_path(icon_path)
 
     def collect_playblasts(self, parent_item, project_root):
         """
