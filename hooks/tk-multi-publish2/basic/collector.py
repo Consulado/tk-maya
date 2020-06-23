@@ -109,9 +109,11 @@ class MayaSessionCollector(HookBaseClass):
                     }
                 },
             )
-
-        if cmds.ls(geometry=True, noIntermediate=True):
-            self._collect_session_geometry(item)
+        current_engine = sgtk.platform.current_engine()
+        step = current_engine.context.step.get("name", "")
+        if step.lower() == "animation":
+            if cmds.ls(geometry=True, noIntermediate=True):
+                self._collect_session_geometry(item)
 
     def collect_current_maya_session(self, settings, parent_item):
         """
@@ -212,14 +214,21 @@ class MayaSessionCollector(HookBaseClass):
         :param parent_item: Parent Item instance
         """
 
-        geo_item = parent_item.create_item(
-            "maya.session.geometry", "Geometry", "All Session Geometry"
-        )
+        tk_consuladoutils = self.load_framework("tk-framework-consuladoutils_v0.x.x")
+        maya_utils = tk_consuladoutils.import_module("maya_utils")
+        maya_scene = maya_utils.MayaScene()
 
-        # get the icon path to display for this item
-        icon_path = os.path.join(self.disk_location, os.pardir, "icons", "geometry.png")
+        for asset in maya_scene:
+            geo_item = parent_item.create_item(
+                "maya.session.geometry", "Geometry", asset.namespace
+            )
 
-        geo_item.set_icon_from_path(icon_path)
+            # get the icon path to display for this item
+            icon_path = os.path.join(
+                self.disk_location, os.pardir, "icons", "geometry.png"
+            )
+            geo_item.set_icon_from_path(icon_path)
+            geo_item.properties.update({"asset": asset})
 
     def collect_playblasts(self, parent_item, project_root):
         """
