@@ -220,7 +220,7 @@ class MayaSessionCollector(HookBaseClass):
 
         for asset in maya_scene:
             geo_item = parent_item.create_item(
-                "file.alembic", "Alembic", asset.namespace
+                "maya.session.geometry", "Geometry", asset.namespace
             )
 
             # get the icon path to display for this item

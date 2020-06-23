@@ -93,7 +93,7 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         accept() method. Strings can contain glob patters such as *, for example
         ["maya.*", "file.maya"]
         """
-        return ["maya.session.geometry"]
+        return ["maya.session.geometry", "file.alembic"]
 
     def accept(self, settings, item):
         """
