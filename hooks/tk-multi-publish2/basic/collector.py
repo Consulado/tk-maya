@@ -213,6 +213,7 @@ class MayaSessionCollector(HookBaseClass):
 
         :param parent_item: Parent Item instance
         """
+
         tk_consuladoutils = self.load_framework("tk-framework-consuladoutils_v0.x.x")
         maya_utils = tk_consuladoutils.import_module("maya_utils")
         maya_scene = maya_utils.MayaScene()
