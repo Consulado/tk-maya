@@ -9,6 +9,7 @@
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
 import os
+import re
 import maya.cmds as cmds
 import maya.mel as mel
 import sgtk
@@ -206,6 +207,11 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         # template:
         work_fields = work_template.get_fields(path)
 
+        # ensure this item has the Asset instance and them, change work template name
+        if item.properties.get("asset"):
+            namespace = item.properties.get("asset").namespace
+            work_template["name"] = "".join(re.findall("[a-zA-Z0-9]", namespace))
+
         # ensure the fields work for the publish template
         missing_keys = publish_template.missing_keys(work_fields)
         if missing_keys:
@@ -255,10 +261,14 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         alembic_args = [
             # only renderable objects (visible and not templated)
             "-renderableOnly",
+            "-attrprefix vzSg",
             # write shading group set assignments (Maya 2015+)
             "-writeFaceSets",
             # write uv's (only the current uv set gets written)
             "-uvWrite",
+            "-writeVisibility",
+            "-attr cNodeId",
+            "-dataFormat ogawa",
         ]
 
         # find the animated frame range to use:
@@ -273,8 +283,8 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         # Get item properties
         asset_instance = item.properties.get("asset")
         if asset_instance:
-            geometries = [geo.fullPath() for geo in asset_instance]
-            alembic_args.append("-root ".join(geometries))
+            for geo in asset_instance:
+                alembic_args.append("-root {}".format(geo.fullPath()))
 
         # build the export command.  Note, use AbcExport -help in Maya for
         # more detailed Alembic export help
