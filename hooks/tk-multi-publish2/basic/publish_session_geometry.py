@@ -94,7 +94,7 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         accept() method. Strings can contain glob patters such as *, for example
         ["maya.*", "file.maya"]
         """
-        return ["maya.session.geometry", "file.alembic"]
+        return ["maya.session.geometry", "maya.session.camera", "file.alembic"]
 
     def accept(self, settings, item):
         """
@@ -210,7 +210,7 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         # ensure this item has the Asset instance and them, change work template name
         if item.properties.get("asset"):
             namespace = item.properties.get("asset").namespace
-            work_template["name"] = "".join(re.findall("[a-zA-Z0-9]", namespace))
+            work_fields["name"] = "".join(re.findall("[a-zA-Z0-9]", namespace))
 
         # ensure the fields work for the publish template
         missing_keys = publish_template.missing_keys(work_fields)
