@@ -289,6 +289,10 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
             for geo in asset_instance:
                 alembic_args.append("-root {}".format(geo.fullPath()))
 
+        camera_intance = item.properties.get("camera")
+        if camera_intance:
+            alembic_args.append("-root {}".format(camera_intance.nodeName()))
+
         # build the export command.  Note, use AbcExport -help in Maya for
         # more detailed Alembic export help
         abc_export_cmd = 'AbcExport -j "%s"' % " ".join(alembic_args)
