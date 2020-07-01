@@ -304,7 +304,7 @@ class MayaSessionCollector(HookBaseClass):
                 self.disk_location, os.pardir, "icons", "alembic.png"
             )
             geo_item.set_icon_from_path(icon_path)
-            geo_item.properties.update({"asset": camera})
+            geo_item.properties.update({"camera": camera})
 
     def collect_rendered_images(self, parent_item):
         """

@@ -211,6 +211,9 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
         if item.properties.get("asset"):
             namespace = item.properties.get("asset").namespace
             work_fields["name"] = "".join(re.findall("[a-zA-Z0-9]", namespace))
+        elif item.properties.get("camera"):
+            camera_name = item.properties.get("camera").nodeName()
+            work_fields["name"] = "".join(re.findall("[a-zA-Z0-9]", camera_name))
 
         # ensure the fields work for the publish template
         missing_keys = publish_template.missing_keys(work_fields)
