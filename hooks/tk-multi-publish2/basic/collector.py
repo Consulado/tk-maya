@@ -114,6 +114,8 @@ class MayaSessionCollector(HookBaseClass):
         if step.lower() == "animation":
             if cmds.ls(geometry=True, noIntermediate=True):
                 self._collect_session_geometry(item)
+            if cmds.ls(type="camera"):
+                self.collect_cameras(item)
 
     def collect_current_maya_session(self, settings, parent_item):
         """
