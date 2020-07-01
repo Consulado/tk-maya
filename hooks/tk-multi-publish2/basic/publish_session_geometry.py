@@ -267,6 +267,7 @@ class MayaSessionGeometryPublishPlugin(HookBaseClass):
             "-attrprefix vzSg",
             # write shading group set assignments (Maya 2015+)
             "-writeFaceSets",
+            "-worldSpace",
             # write uv's (only the current uv set gets written)
             "-uvWrite",
             "-writeVisibility",
