@@ -170,7 +170,7 @@ class MayaLauncher(SoftwareLauncher):
                 temp_env.update({p.get("code"): p.get("sg_windows_path")})
                 # temp_env.update({p.get("code"): p.get(sys_key)})
 
-            env.update(_conform_env(env=temp_env, pattern=r"\%(\w+)\%"))
+            env.update(self._conform_env(env=temp_env, pattern=r"\%(\w+)\%"))
         return env
 
     @staticmethod
@@ -210,7 +210,7 @@ class MayaLauncher(SoftwareLauncher):
 
                 iter_index += 1
                 for k, v in env.items():
-                    env[k] = _conform_env(v, env, pattern, deep)
+                    env[k] = MayaLauncher._conform_env(v, env, pattern, deep)
             return env
         else:
             # match and change by pattern regex method
