@@ -137,7 +137,16 @@ class MayaLauncher(SoftwareLauncher):
         if file_to_open:
             # Add the file name to open to the launch environment
             required_env["SGTK_FILE_TO_OPEN"] = file_to_open
-        required_env.update(self._consulado_environment_variables())
+        consulado_env = self._consulado_environment_variables()
+
+        for c_k, c_v in consulado_env.items():
+            for s_k, s_v in required_env.items():
+                if c_k == s_k:
+                    required_env[s_k] = "{}{}{}".format(s_v, os.pathsep, c_v)
+                    del consulado_env[c_k]
+        if consulado_env:
+            required_env.update(consulado_env)
+
         return LaunchInformation(exec_path, args, required_env)
 
     ##########################################################################################
@@ -208,7 +217,7 @@ class MayaLauncher(SoftwareLauncher):
             match = re.findall(pattern, path)
             for match in re.findall(pattern, path):
                 group, key = match
-                path = path.replace(group, env.get(key))
+                path = path.replace(group, env.get(key) or os.environ.get(key))
             return path
 
     def _icon_from_executable(self, exec_path):
