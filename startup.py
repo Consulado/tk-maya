@@ -10,7 +10,7 @@
 
 import os
 import sys
-
+import re
 import sgtk
 from sgtk.platform import SoftwareLauncher, SoftwareVersion, LaunchInformation
 
@@ -137,11 +137,79 @@ class MayaLauncher(SoftwareLauncher):
         if file_to_open:
             # Add the file name to open to the launch environment
             required_env["SGTK_FILE_TO_OPEN"] = file_to_open
-
+        required_env.update(self._consulado_environment_variables())
         return LaunchInformation(exec_path, args, required_env)
 
     ##########################################################################################
     # private methods
+
+    def _consulado_environment_variables(self):
+        env = {}
+        sg_env = self.shotgun.find(
+            "CustomNonProjectEntity02",
+            [],
+            ["sg_windows_path", "sg_linux_path", "sg_mac_path", "code"],
+        )
+        if sg_env:
+            sys_key = (
+                "sg_windows_path"
+                if sys.platform == "win32"
+                else ("sg_mac_path" if sys.platform == "darwin" else "sg_linux_path")
+            )
+            temp_env = {}
+            for p in sg_env:
+                temp_env.update({p.get("code"): p.get("sg_windows_path")})
+                # temp_env.update({p.get("code"): p.get(sys_key)})
+
+            env.update(_conform_env(env=temp_env, pattern=r"\%(\w+)\%"))
+        return env
+
+    @staticmethod
+    def _conform_env(path="", env={}, pattern=r"(\$\{(\w+)\})", deep=10):
+        """This method tries to remove all environment keys from the ``env`` argument.
+        This operation follows a regex pattern provided by the ``pattern`` argument.
+
+        Args:
+            path   (str): The path to check. In the first interaction, this argument must be empty.
+            env   (dict): The data to check.
+            pattern(str): The regex pattern. By default, this argument will check the pattern: ``${KEY_NAME}``
+            deep   (int): How much deep you want to check. For example, if you have an env key x referenced by y, referenced by z; you have a deep=3
+
+        Raises:
+            RecursionError: If interactions are greater than deep argument.
+
+        Returns:
+            dict:The env conformed.
+            
+        """
+
+        def check_env(data):
+            for k, v in data.items():
+                if "${" in v and "}" in v:
+                    return True
+            return False
+
+        iter_index = 0
+        if not path:
+            # It checks if env already has some values to change.
+            # The recursion method starts here.
+            while check_env(env):
+                if iter_index >= deep:
+                    raise RecursionError(
+                        "Unable to check all keys, max interactions have been reached."
+                    )
+
+                iter_index += 1
+                for k, v in env.items():
+                    env[k] = _conform_env(v, env, pattern, deep)
+            return env
+        else:
+            # match and change by pattern regex method
+            match = re.findall(pattern, path)
+            for match in re.findall(pattern, path):
+                group, key = match
+                path = path.replace(group, env.get(key))
+            return path
 
     def _icon_from_executable(self, exec_path):
         """
