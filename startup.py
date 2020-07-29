@@ -167,10 +167,14 @@ class MayaLauncher(SoftwareLauncher):
             )
             temp_env = {}
             for p in sg_env:
-                temp_env.update({p.get("code"): p.get(sys_key)})
+                if p.get(sys_key):
+                    temp_env.update({p.get("code"): p.get(sys_key)})
 
-            pattern = r"(\%(\w+)\%)" if sys.platform == "win32" else r"(\$\{(\w+)\})"
-            env.update(self._conform_env(env=temp_env, pattern=pattern))
+            if temp_env:
+                pattern = (
+                    r"(\%(\w+)\%)" if sys.platform == "win32" else r"(\$\{(\w+)\})"
+                )
+                env.update(self._conform_env(env=temp_env, pattern=pattern))
         return env
 
     def _conform_env(self, path="", env={}, pattern=r"(\$\{(\w+)\})", deep=10):
