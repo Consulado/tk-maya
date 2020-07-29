@@ -192,9 +192,9 @@ class MayaLauncher(SoftwareLauncher):
             
         """
 
-        def check_env(data):
+        def check_env(data, pattern):
             for k, v in data.items():
-                if "${" in v and "}" in v:
+                if re.findall(pattern, v):
                     return True
             return False
 
@@ -202,7 +202,7 @@ class MayaLauncher(SoftwareLauncher):
         if not path:
             # It checks if env already has some values to change.
             # The recursion method starts here.
-            while check_env(env):
+            while check_env(env, pattern):
                 if iter_index >= deep:
                     raise RecursionError(
                         "Unable to check all keys, max interactions have been reached."
