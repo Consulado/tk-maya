@@ -170,7 +170,7 @@ class MayaLauncher(SoftwareLauncher):
                 temp_env.update({p.get("code"): p.get(sys_key)})
 
             pattern = r"(\%(\w+)\%)" if sys.platform == "win32" else r"(\$\{(\w+)\})"
-            env.update(self._conform_env(env=temp_env, pattern=pattern)
+            env.update(self._conform_env(env=temp_env, pattern=pattern))
         return env
 
     def _conform_env(self, path="", env={}, pattern=r"(\$\{(\w+)\})", deep=10):
@@ -190,6 +190,7 @@ class MayaLauncher(SoftwareLauncher):
             dict:The env conformed.
             
         """
+
         def check_env(data, pattern):
             for k, v in data.items():
                 if re.findall(pattern, v):
@@ -202,9 +203,11 @@ class MayaLauncher(SoftwareLauncher):
             # The recursion method starts here.
             while check_env(env, pattern):
                 if iter_index >= deep:
-                    self.logger.error("Unable to check all keys, max interactions have been reached.")
+                    self.logger.error(
+                        "Unable to check all keys, max interactions have been reached."
+                    )
                     break
-                
+
                 iter_index += 1
                 for k, v in env.items():
                     env[k] = self._conform_env(v, env, pattern, deep)
@@ -217,7 +220,9 @@ class MayaLauncher(SoftwareLauncher):
                     group, key = match
                     path = path.replace(group, env.get(key))
                 except Exception as e:
-                    self.logger.error("Unable to conform path %s, because: %s" % (path, e))
+                    self.logger.error(
+                        "Unable to conform path %s, because: %s" % (path, e)
+                    )
                     continue
             return path
 
