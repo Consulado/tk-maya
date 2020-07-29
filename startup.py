@@ -167,14 +167,13 @@ class MayaLauncher(SoftwareLauncher):
             )
             temp_env = {}
             for p in sg_env:
-                temp_env.update({p.get("code"): p.get("sg_windows_path")})
-                # temp_env.update({p.get("code"): p.get(sys_key)})
+                temp_env.update({p.get("code"): p.get(sys_key)})
 
-            env.update(self._conform_env(env=temp_env, pattern=r"\%(\w+)\%"))
+            pattern = r"(\%(\w+)\%)" if sys.platform == "win32" else r"(\$\{(\w+)\})"
+            env.update(self._conform_env(env=temp_env, pattern=pattern)
         return env
 
-    @staticmethod
-    def _conform_env(path="", env={}, pattern=r"(\$\{(\w+)\})", deep=10):
+    def _conform_env(self, path="", env={}, pattern=r"(\$\{(\w+)\})", deep=10):
         """This method tries to remove all environment keys from the ``env`` argument.
         This operation follows a regex pattern provided by the ``pattern`` argument.
 
@@ -191,7 +190,6 @@ class MayaLauncher(SoftwareLauncher):
             dict:The env conformed.
             
         """
-
         def check_env(data, pattern):
             for k, v in data.items():
                 if re.findall(pattern, v):
@@ -204,20 +202,23 @@ class MayaLauncher(SoftwareLauncher):
             # The recursion method starts here.
             while check_env(env, pattern):
                 if iter_index >= deep:
-                    raise RecursionError(
-                        "Unable to check all keys, max interactions have been reached."
-                    )
-
+                    self.logger.error("Unable to check all keys, max interactions have been reached.")
+                    break
+                
                 iter_index += 1
                 for k, v in env.items():
-                    env[k] = MayaLauncher._conform_env(v, env, pattern, deep)
+                    env[k] = self._conform_env(v, env, pattern, deep)
             return env
         else:
             # match and change by pattern regex method
             match = re.findall(pattern, path)
             for match in re.findall(pattern, path):
-                group, key = match
-                path = path.replace(group, env.get(key) or os.environ.get(key))
+                try:
+                    group, key = match
+                    path = path.replace(group, env.get(key))
+                except Exception as e:
+                    self.logger.error("Unable to conform path %s, because: %s" % (path, e))
+                    continue
             return path
 
     def _icon_from_executable(self, exec_path):
