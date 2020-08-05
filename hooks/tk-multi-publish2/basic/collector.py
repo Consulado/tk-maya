@@ -116,6 +116,8 @@ class MayaSessionCollector(HookBaseClass):
                 self._collect_session_geometry(item)
             if cmds.ls(type="camera"):
                 self.collect_cameras(item)
+        elif step.lower() in ["lookdev", "render", "illumination"]:
+            self._collect_session_shaders(item)
 
     def collect_current_maya_session(self, settings, parent_item):
         """
@@ -208,6 +210,28 @@ class MayaSessionCollector(HookBaseClass):
             # allow the base class to collect and create the item. it knows how
             # to handle alembic files
             super(MayaSessionCollector, self)._collect_file(parent_item, cache_path)
+
+    def _collect_session_shaders(self, parent_item):
+        """
+        Creates items for session shaders to be exported.
+
+        :param parent_item: Parent Item instance
+        """
+        tk_consuladoutils = self.load_framework("tk-framework-consuladoutils_v0.x.x")
+        maya_utils = tk_consuladoutils.import_module("maya_utils")
+        maya_scene = maya_utils.MayaScene()
+        for asset in maya_scene:
+            shader_iter = maya_utils.ShaderIter(nodes=[n for n in asset])
+            shd_item = parent_item.create_item(
+                "maya.asset.shader", "Shader", asset.namespace
+            )
+
+            # get the icon path to display for this item
+            icon_path = os.path.join(
+                self.disk_location, os.pardir, "icons", "shader.png"
+            )
+            shd_item.set_icon_from_path(icon_path)
+            shd_item.properties.update({"shader": shader_iter})
 
     def _collect_session_geometry(self, parent_item):
         """
