@@ -9,6 +9,7 @@
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
 import os
+import re
 import maya.cmds as cmds
 import sgtk
 
@@ -79,7 +80,24 @@ class MayaAssetShaderExport(HookBaseClass):
         The type string should be one of the data types that toolkit accepts as
         part of its environment configuration.
         """
-        return {}
+        # inherit the settings from the base publish plugin
+        base_settings = super(MayaAssetShaderExport, self).settings or {}
+
+        # settings specific to this class
+        maya_publish_settings = {
+            "Publish Template": {
+                "type": "template",
+                "default": None,
+                "description": "Template path for published work files. Should"
+                "correspond to a template defined in "
+                "templates.yml.",
+            }
+        }
+
+        # update the base settings
+        base_settings.update(maya_publish_settings)
+
+        return base_settings
 
     def accept(self, settings, item):
         """
@@ -107,33 +125,45 @@ class MayaAssetShaderExport(HookBaseClass):
         :returns: dictionary with boolean keys accepted, required and enabled
         """
 
-        path = _session_path()
+        if item.properties.get("shader_iter") is None:
+            return {"accepted": False}
+        elif len(item.properties.get("shader_iter").nodes) == 0:
+            return {"accepted": False}
 
-        if path:
-            version_number = self._get_version_number(path, item)
-            if version_number is not None:
-                self.logger.info(
-                    "Maya '%s' plugin rejected the current session..." % (self.name,)
-                )
-                self.logger.info("  There is already a version number in the file...")
-                self.logger.info("  Maya file path: %s" % (path,))
-                return {"accepted": False}
-        else:
-            # the session has not been saved before (no path determined).
-            # provide a save button. the session will need to be saved before
-            # validation will succeed.
-            self.logger.warn(
-                "The Maya session has not been saved.", extra=_get_save_as_action()
+        accepted = True
+        publisher = self.parent
+        self.logger.info(settings)
+        # template_name = settings["Publish Template"].value
+
+        # ensure a work file template is available on the parent item
+        work_template = item.parent.properties.get("work_template")
+        if not work_template:
+            self.logger.debug(
+                "A work template is required for the session item in order to "
+                "publish session geometry. Not accepting session geom item."
             )
+            accepted = False
 
-        self.logger.info(
-            "Maya '%s' plugin accepted the current session." % (self.name,),
-            extra=_get_version_docs_action(),
-        )
+        # ensure the publish template is defined and valid and that we also have
+        publish_template = publisher.get_template_by_name("maya_asset_shader")
+        self.logger.info(publish_template)
+        if not publish_template:
+            self.logger.debug(
+                "The valid publish template could not be determined for the "
+                "session geometry item. Not accepting the item."
+            )
+            accepted = False
 
-        # accept the plugin, but don't force the user to add a version number
-        # (leave it unchecked)
-        return {"accepted": True, "checked": True}
+        # we've validated the publish template. add it to the item properties
+        # for use in subsequent methods
+        item.properties["publish_template"] = publish_template
+
+        # because a publish template is configured, disable context change. This
+        # is a temporary measure until the publisher handles context switching
+        # natively.
+        item.context_change_allowed = False
+
+        return {"accepted": accepted, "checked": True}
 
     def validate(self, settings, item):
         """
@@ -149,36 +179,56 @@ class MayaAssetShaderExport(HookBaseClass):
         :returns: True if item is valid, False otherwise.
         """
 
-        publisher = self.parent
+        shader_iter = item.properties.get("shader_iter")
+        shader_iter.fetch()
+
+        if not len(shader_iter):
+            return False
+
+        # get the configured work file template
+        work_template = item.parent.properties.get("work_template")
+        publish_template = item.properties.get("publish_template")
+
         path = _session_path()
+
+        # ---- ensure the session has been saved
 
         if not path:
             # the session still requires saving. provide a save button.
-            # validation fails
+            # validation fails.
             error_msg = "The Maya session has not been saved."
             self.logger.error(error_msg, extra=_get_save_as_action())
             raise Exception(error_msg)
 
-        # NOTE: If the plugin is attached to an item, that means no version
-        # number could be found in the path. If that's the case, the work file
-        # template won't be much use here as it likely has a version number
-        # field defined within it. Simply use the path info hook to inject a
-        # version number into the current file path
+        # get the normalized path
+        path = sgtk.util.ShotgunPath.normalize(path)
 
-        # get the path to a versioned copy of the file.
-        version_path = publisher.util.get_version_path(path, "v001")
-        if os.path.exists(version_path):
+        # get the current scene path and extract fields from it using the work
+        # template:
+        work_fields = work_template.get_fields(path)
+
+        # ensure the fields work for the publish template
+        missing_keys = publish_template.missing_keys(work_fields)
+        if missing_keys:
             error_msg = (
-                "A file already exists with a version number. Please "
-                "choose another name."
+                "Work file '%s' missing keys required for the "
+                "publish template: %s" % (path, missing_keys)
             )
-            self.logger.error(error_msg, extra=_get_save_as_action())
+            self.logger.error(error_msg)
             raise Exception(error_msg)
 
-        if item.properties.get("shader") is None:
-            return False
+        # create the publish path by applying the fields. store it in the item's
+        # properties. This is the path we'll create and then publish in the base
+        # publish plugin. Also set the publish_path to be explicit.
+        item.properties["path"] = publish_template.apply_fields(work_fields)
+        item.properties["publish_path"] = item.properties["path"]
 
-        return True
+        # use the work file's version number when publishing
+        if "version" in work_fields:
+            item.properties["publish_version"] = work_fields["version"]
+
+        # run the base class validation
+        return super(MayaAssetShaderExport, self).validate(settings, item)
 
     def publish(self, settings, item):
         """
@@ -199,7 +249,64 @@ class MayaAssetShaderExport(HookBaseClass):
         # ensure the session is saved in its current state
         _save_session(path)
 
-        self.logger.info(item.properties)
+        # get the path to create and publish
+        publish_path = item.properties["path"]
+        publish_dir = os.path.dirname(publish_path)
+
+        # make sure this folder already exists
+        if not os.path.isdir(publish_dir):
+            try:
+                os.makedirs(publish_dir)
+            except Exception as e:
+                self.logger.error(
+                    "Unable to make the directory {}, because: {}".format(
+                        publish_dir, e
+                    )
+                )
+
+        shader_iter = item.properties.get("shader_iter")
+        for shader in shader_iter:
+            shader_path = os.path.join(
+                publish_dir,
+                "{}.v{:03d}".format(
+                    shader.shading_engine.nodeName(),
+                    self._get_next_shader_version_number(
+                        publish_dir, shader.shading_engine.nodeName()
+                    ),
+                ),
+            )
+            shader.export(shader_path)
+
+            publish_data = {
+                "tk": publisher.sgtk,
+                "context": item.context,
+                "comment": item.description,
+                "path": shader_path,
+                "name": shader.shading_engine.nodeName(),
+                "created_by": item.get_property("publish_user", default_value=None),
+                "thumbnail_path": item.get_thumbnail_as_path(),
+                "published_file_type": "Maya File",
+                "dependency_paths": [],
+            }
+            # log the publish data for debugging
+            self.logger.debug(
+                "Populated Publish data...",
+                extra={
+                    "action_show_more_info": {
+                        "label": "Publish Data",
+                        "tooltip": "Show the complete Publish data dictionary",
+                        "text": "<pre>%s</pre>" % (pprint.pformat(publish_data),),
+                    }
+                },
+            )
+            publish_result = sgtk.util.register_publish(**publish_data)
+            self.logger.info(
+                "Shader {} exported to {} successfully".format(
+                    shader.shading_engine.nodeName(), shader_path
+                )
+            )
+
+        return super(MayaAssetShaderExport, self).publish(settings, item)
 
     def finalize(self, settings, item):
         """
@@ -212,7 +319,21 @@ class MayaAssetShaderExport(HookBaseClass):
             instances.
         :param item: Item to process
         """
-        pass
+
+        return super(MayaAssetShaderExport, self).finalize(settings, item)
+
+    def _get_next_shader_version_number(self, path, file_name):
+        files = [f for f in os.listdir(path) if file_name in f]
+        version = 0
+        files.sort()
+
+        for match in re.findall("(\w+.v(\d{3}).\w+)", files[-1]):
+            f, v = match
+            v = int(v)
+            if version < v:
+                version = v
+
+        return version + 1
 
     def _get_version_number(self, path, item):
         """

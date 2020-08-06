@@ -231,7 +231,7 @@ class MayaSessionCollector(HookBaseClass):
                 self.disk_location, os.pardir, "icons", "shader.png"
             )
             shd_item.set_icon_from_path(icon_path)
-            shd_item.properties.update({"shader": shader_iter})
+            shd_item.properties.update({"shader_iter": shader_iter})
 
     def _collect_session_geometry(self, parent_item):
         """
