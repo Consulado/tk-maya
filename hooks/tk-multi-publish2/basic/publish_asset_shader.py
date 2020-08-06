@@ -10,6 +10,7 @@
 
 import os
 import re
+import pprint
 import maya.cmds as cmds
 import sgtk
 
@@ -266,14 +267,12 @@ class MayaAssetShaderExport(HookBaseClass):
 
         shader_iter = item.properties.get("shader_iter")
         for shader in shader_iter:
+            version_number = self._get_next_shader_version_number(
+                publish_dir, shader.shading_engine.nodeName()
+            )
             shader_path = os.path.join(
                 publish_dir,
-                "{}.v{:03d}".format(
-                    shader.shading_engine.nodeName(),
-                    self._get_next_shader_version_number(
-                        publish_dir, shader.shading_engine.nodeName()
-                    ),
-                ),
+                "{}.v{:03d}".format(shader.shading_engine.nodeName(), version_number,),
             )
             shader.export(shader_path)
 
@@ -284,8 +283,9 @@ class MayaAssetShaderExport(HookBaseClass):
                 "path": shader_path,
                 "name": shader.shading_engine.nodeName(),
                 "created_by": item.get_property("publish_user", default_value=None),
+                "version_number": version_number,
                 "thumbnail_path": item.get_thumbnail_as_path(),
-                "published_file_type": "Maya File",
+                "published_file_type": "Maya Shader",
                 "dependency_paths": [],
             }
             # log the publish data for debugging
@@ -300,6 +300,10 @@ class MayaAssetShaderExport(HookBaseClass):
                 },
             )
             publish_result = sgtk.util.register_publish(**publish_data)
+            self.logger.debug(
+                "publish result: {}".format(pprint.pformat(publish_result))
+            )
+
             self.logger.info(
                 "Shader {} exported to {} successfully".format(
                     shader.shading_engine.nodeName(), shader_path
