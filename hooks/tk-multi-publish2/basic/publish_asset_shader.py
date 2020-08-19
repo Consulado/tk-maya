@@ -337,6 +337,11 @@ class MayaAssetShaderExport(HookBaseClass):
                 {"type": sg_node_name, "id": i.getTransform().cNodeId.get()}
                 for i in shader.nodes
             ]
+            node.entity_filter = [
+                ["code", "is", node.code],
+                ["sg_link", "is", node.sg_link],
+                ["sg_node_type", "is", node.sg_node_type],
+            ]
             node.load()
             self.logger.debug(
                 "Found the Shotguns entity node: %s" % node.shotgun_entity_data
