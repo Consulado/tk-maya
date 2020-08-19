@@ -285,7 +285,7 @@ class MayaAssetShaderExport(HookBaseClass):
             "sg_node_type",
             "sg_downstream_node",
             "sg_upstream_node",
-            "published_file",
+            "sg_published_files",
         ]
         Nodes = consulado_model.EntityIter(sg_node_name, node_fields, context, sg)
 
@@ -329,7 +329,7 @@ class MayaAssetShaderExport(HookBaseClass):
             node.code = shader.shading_engine.nodeName()
             node.sg_link = publish_result.get("entity")
             node.sg_node_type = {"type": sg_node_type_name, "id": 4}
-            node.published_file = {
+            node.sg_published_files = {
                 "type": "PublishedFile",
                 "id": publish_result.get("id"),
             }
