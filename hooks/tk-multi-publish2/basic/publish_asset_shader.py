@@ -271,14 +271,12 @@ class MayaAssetShaderExport(HookBaseClass):
 
         # Consulado framework init
         tk_consuladoutils = self.load_framework("tk-framework-consuladoutils_v0.x.x")
-        consulado_globals = self.tk_consuladoutils.import_module("shotgun_globals")
-        maya_utils = self.tk_consuladoutils.import_module("maya_utils")
-        consulado_model = self.tk_consuladoutils.import_module("shotgun_model")
+        consulado_globals = tk_consuladoutils.import_module("shotgun_globals")
+        maya_utils = tk_consuladoutils.import_module("maya_utils")
+        consulado_model = tk_consuladoutils.import_module("shotgun_model")
 
-        sg_node_name = self.consulado_globals.get_custom_entity_by_alias("node")
-        sg_node_type_name = self.consulado_globals.get_custom_entity_by_alias(
-            "node_type"
-        )
+        sg_node_name = consulado_globals.get_custom_entity_by_alias("node")
+        sg_node_type_name = consulado_globals.get_custom_entity_by_alias("node_type")
         node_fields = [
             "project",
             "id",
