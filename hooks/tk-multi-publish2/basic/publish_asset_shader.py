@@ -265,6 +265,34 @@ class MayaAssetShaderExport(HookBaseClass):
                     )
                 )
 
+        engine = sgtk.platform.current_engine()
+        sg = engine.shotgun
+        context = engine.context
+
+        # Consulado framework init
+        tk_consuladoutils = self.load_framework(
+            "tk-framework-consuladoutils_v0.x.x"
+        )
+        consulado_globals = self.tk_consuladoutils.import_module("shotgun_globals")
+        maya_utils = self.tk_consuladoutils.import_module("maya_utils")
+        consulado_model = self.tk_consuladoutils.import_module("shotgun_model")
+
+        sg_node_name = self.consulado_globals.get_custom_entity_by_alias("node")
+        sg_node_type_name = self.consulado_globals.get_custom_entity_by_alias(
+            "node_type"
+        )
+        node_fields = [
+            "project",
+            "id",
+            "code",
+            "sg_link",
+            "sg_node_type",
+            "sg_downstream_node",
+            "sg_upstream_node",
+            "published_file",
+        ]
+        Nodes = consulado_model.EntityIter(sg_node_name, node_fields, context, sg)
+
         shader_iter = item.properties.get("shader_iter")
         for shader in shader_iter:
             version_number = self._get_next_shader_version_number(
@@ -300,6 +328,26 @@ class MayaAssetShaderExport(HookBaseClass):
                 },
             )
             publish_result = sgtk.util.register_publish(**publish_data)
+
+            node = Nodes.add_new_entity()
+            node.code = shader.shading_engine.nodeName()
+            node.sg_link = publish_result.get("entity")
+            node.sg_node_type = {"type": sg_node_type_name, "id": 4}
+            node.published_file = {"type":"PublishedFile", "id": publish_result.get("id")}
+            node.sg_upstream_node = [
+                {"type": sg_node_name, "id": i} 
+                for i.getTransform().cNodeId.get() in shader.nodes
+            ]
+            node.load()
+            self.logger.debug(
+                "Found the Shotguns entity node: %s" % node.shotgun_entity_data
+            )
+            if node.id is None:
+                node.create()
+            else:
+                node.update()
+
+            # TODO: Vicular o Node shader no downstream do Node mesh
             self.logger.debug(
                 "publish result: {}".format(pprint.pformat(publish_result))
             )
