@@ -329,10 +329,9 @@ class MayaAssetShaderExport(HookBaseClass):
             node.code = shader.shading_engine.nodeName()
             node.sg_link = publish_result.get("entity")
             node.sg_node_type = {"type": sg_node_type_name, "id": 4}
-            node.sg_published_files = {
-                "type": "PublishedFile",
-                "id": publish_result.get("id"),
-            }
+            node.sg_published_files = [
+                {"type": "PublishedFile", "id": publish_result.get("id"),}
+            ]
             node.sg_upstream_node_dependency = [
                 {"type": sg_node_name, "id": i.getTransform().cNodeId.get()}
                 for i in shader.nodes
