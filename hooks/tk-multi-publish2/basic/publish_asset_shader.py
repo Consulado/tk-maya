@@ -380,6 +380,8 @@ class MayaAssetShaderExport(HookBaseClass):
     def _get_next_shader_version_number(self, path, file_name):
         files = [f for f in os.listdir(path) if file_name in f]
         version = 0
+        if not files:
+            return version + 1
         files.sort()
 
         for match in re.findall("(\w+.v(\d{3}).\w+)", files[-1]):
